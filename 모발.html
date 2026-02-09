@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<title>INFINITE STAIRS</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<style>
+body {
+  margin: 0;
+  background: #000;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+canvas {
+  image-rendering: pixelated;
+  background: #111;
+  border: 3px solid #555;
+  margin-top: 10px;
+}
+.controls {
+  display: none;
+  width: 240px;
+  justify-content: space-between;
+  margin-top: 10px;
+}
+.btn {
+  width: 110px;
+  height: 60px;
+  background: #222;
+  color: #fff;
+  font-size: 20px;
+  border: 2px solid #555;
+  border-radius: 10px;
+}
+.btn:active {
+  background: #555;
+}
+</style>
+</head>
+<body>
+
+<canvas id="game" width="240" height="400"></canvas>
+
+<div class="controls" id="controls">
+  <button class="btn" id="leftBtn">◀ LEFT</button>
+  <button class="btn" id="rightBtn">RIGHT ▶</button>
+</div>
+
+<script>
+const canvas = document.getElementById("game");
+const ctx = canvas.getContext("2d");
+ctx.imageSmoothingEnabled = false;
+
+const controls = document.getElementById("controls");
+if ("ontouchstart" in window) controls.style.display = "flex";
+
+/* ===== 상태 ===== */
+let scene="menu";
+let playerColor="#0f0";
+
+/* ===== 상수 ===== */
+const LEFT_X=70, RIGHT_X=170, STEP=32, PLAYER_Y=280;
+
+/* ===== 변수 ===== */
+let stairs=[], particles=[], debris=[];
+let score=0, playerSide="left", shake=0, showPlayer=true;
+
+/* ===== 오디오 ===== */
+const audioCtx=new (window.AudioContext||window.webkitAudioContext)();
+let musicTimer=null;
+const melody=[180,220,200,260,220,200];
+let mIndex=0;
+function startMusic(){
+  if(musicTimer) return;
+  musicTimer=setInterval(()=>{
+    const o=audioCtx.createOscillator();
+    const g=audioCtx.createGain();
+    o.type="triangle";
+    o.frequency.value=melody[mIndex++%melody.length];
+    g.gain.value=0.03;
+    o.connect(g); g.connect(audioCtx.destination);
+    o.start(); o.stop(audioCtx.currentTime+0.25);
+  },300);
+}
+function stepSound(){
+  const o=audioCtx.createOscillator();
+  const g=audioCtx.createGain();
+  o.type="square"; o.frequency.value=400; g.gain.value=0.05;
+  o.connect(g); g.connect(audioCtx.destination);
+  o.start(); o.stop(audioCtx.currentTime+0.1);
+}
+function deadSound(){
+  const o=audioCtx.createOscillator();
+  const g=audioCtx.createGain();
+  o.type="sawtooth";
+  o.frequency.setValueAtTime(200,audioCtx.currentTime);
+  o.frequency.exponentialRampToValueAtTime(40,audioCtx.currentTime+0.4);
+  g.gain.value=0.07;
+  o.connect(g); g.connect(audioCtx.destination);
+  o.start(); o.stop(audioCtx.currentTime+0.4);
+}
+
+/* ===== 입력 ===== */
+document.addEventListener("keydown",e=>{
+  if(audioCtx.state==="suspended") audioCtx.resume();
+  if(scene==="menu" && e.code==="Enter") startGame();
+  if(scene==="menu" && e.code==="KeyC") scene="color";
+  if(scene==="color" && e.code==="Escape") scene="menu";
+  if(scene==="game"){
+    if(e.code==="ArrowLeft") step("left");
+    if(e.code==="ArrowRight") step("right");
+  }
+  if(scene==="over" && e.code==="Enter") startGame();
+});
+
+/* 터치 버튼 */
+leftBtn.ontouchstart=()=>step("left");
+rightBtn.ontouchstart=()=>step("right");
+
+/* ===== 게임 ===== */
+function startGame(){
+  scene="game";
+  showPlayer=true;
+  stairs=[{x:LEFT_X,y:PLAYER_Y}];
+  for(let i=1;i<12;i++)
+    stairs.push({x:Math.random()>0.5?LEFT_X:RIGHT_X,y:PLAYER_Y-i*STEP});
+  particles=[]; debris=[];
+  score=0; playerSide="left"; shake=0;
+  startMusic();
+}
+
+function spawnParticles(x,y){
+  for(let i=0;i<6;i++)
+    particles.push({x,y,vx:(Math.random()-.5)*2,vy:-Math.random()*2,life:20});
+}
+function breakPlayer(x,y){
+  for(let i=0;i<25;i++)
+    debris.push({x,y,vx:(Math.random()-.5)*6,vy:(Math.random()-.5)*6,life:60,color:playerColor});
+}
+function step(dir){
+  if(scene!=="game") return;
+  const next=stairs[1];
+  const ok=(dir==="left"&&next.x===LEFT_X)||(dir==="right"&&next.x===RIGHT_X);
+  if(!ok){
+    scene="over"; showPlayer=false; shake=30;
+    deadSound(); breakPlayer(playerSide==="left"?LEFT_X:RIGHT_X,PLAYER_Y);
+    return;
+  }
+  stepSound();
+  playerSide=dir;
+  spawnParticles(dir==="left"?LEFT_X:RIGHT_X,PLAYER_Y);
+  score++;
+  stairs.forEach(s=>s.y+=STEP);
+  stairs.shift();
+  const last=stairs.at(-1);
+  stairs.push({x:Math.random()>0.5?LEFT_X:RIGHT_X,y:last.y-STEP});
+}
+
+/* ===== 그리기 ===== */
+function draw(){
+  ctx.setTransform(1,0,0,1,0,0);
+  ctx.clearRect(0,0,240,400);
+  if(shake>0){
+    ctx.translate((Math.random()-.5)*shake,(Math.random()-.5)*shake);
+    shake--;
+  }
+  ctx.fillStyle="#141414";
+  ctx.fillRect(0,0,240,400);
+  ctx.fillStyle="#888";
+  stairs.forEach(s=>ctx.fillRect(s.x-20,s.y,40,8));
+  particles.forEach(p=>{
+    ctx.fillStyle=playerColor;
+    ctx.fillRect(p.x,p.y,2,2);
+    p.x+=p.vx; p.y+=p.vy; p.life--;
+  });
+  particles=particles.filter(p=>p.life>0);
+  if(showPlayer){
+    const px=playerSide==="left"?LEFT_X:RIGHT_X;
+    ctx.fillStyle=playerColor;
+    ctx.fillRect(px-4,PLAYER_Y-12,8,12);
+    ctx.fillRect(px-6,PLAYER_Y-18,12,6);
+  }
+  ctx.fillStyle="#fff";
+  ctx.fillText("SCORE "+score,10,15);
+  if(scene==="menu"){
+    ctx.fillText("INFINITE STAIRS",40,200);
+    ctx.fillText("TAP TO START",60,220);
+  }
+  if(scene==="over"){
+    debris.forEach(d=>{
+      ctx.fillStyle=d.color;
+      ctx.fillRect(d.x,d.y,3,3);
+      d.x+=d.vx; d.y+=d.vy; d.vy+=0.3;
+    });
+    ctx.fillText("GAME OVER",70,200);
+    ctx.fillText("TAP RETRY",75,220);
+  }
+  requestAnimationFrame(draw);
+}
+draw();
+</script>
+
+</body>
+</html>
