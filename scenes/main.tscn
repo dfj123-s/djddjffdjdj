@@ -1,0 +1,41 @@
+[gd_scene load_steps=6 format=3 uid="uid://bthrone0main01"]
+
+[ext_resource type="Script" path="res://scripts/main.gd" id="1_main"]
+[ext_resource type="Script" path="res://scripts/ground.gd" id="2_ground"]
+[ext_resource type="Script" path="res://scripts/camera_controller.gd" id="3_camera"]
+[ext_resource type="Script" path="res://scripts/selection_controller.gd" id="4_selection"]
+[ext_resource type="PackedScene" path="res://scenes/farmer.tscn" id="5_farmer"]
+
+[node name="Main" type="Node2D"]
+script = ExtResource("1_main")
+
+[node name="Ground" type="Sprite2D" parent="."]
+script = ExtResource("2_ground")
+
+[node name="Units" type="Node2D" parent="."]
+y_sort_enabled = true
+
+[node name="Farmer1" parent="Units" instance=ExtResource("5_farmer")]
+position = Vector2(1900, 1500)
+
+[node name="Farmer2" parent="Units" instance=ExtResource("5_farmer")]
+position = Vector2(2050, 1460)
+
+[node name="Farmer3" parent="Units" instance=ExtResource("5_farmer")]
+position = Vector2(2200, 1520)
+
+[node name="Farmer4" parent="Units" instance=ExtResource("5_farmer")]
+position = Vector2(1880, 1640)
+
+[node name="Farmer5" parent="Units" instance=ExtResource("5_farmer")]
+position = Vector2(2060, 1680)
+
+[node name="Farmer6" parent="Units" instance=ExtResource("5_farmer")]
+position = Vector2(2240, 1660)
+
+[node name="Camera2D" type="Camera2D" parent="."]
+position = Vector2(2048, 1536)
+script = ExtResource("3_camera")
+
+[node name="Selection" type="Node2D" parent="."]
+script = ExtResource("4_selection")
